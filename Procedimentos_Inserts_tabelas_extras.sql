@@ -56,11 +56,142 @@ select * FROM MIDIA;
 
 
 
+---------------------------------------------------------- GITHUB --------------------------------------------------------------
 
----------- Github -----------
--- kkkkkkkkkkk ll
----Test
 
+
+------------------------------------------------- Criação da Tabela MARKETING ------------------------------------------------
+DROP TABLE marketing;
+CREATE TABLE marketing (
+    marketing_id     NUMBER(6) NOT NULL,
+    name             VARCHAR2(50) NOT NULL,
+    description      VARCHAR2(50) NOT NULL,
+    midia_midia_id   NUMBER(6) NOT NULL,
+    start_date       DATE NOT NULL,
+    end_date         DATE NOT NULL,
+    category         VARCHAR2(50) NOT NULL,
+    cost             NUMBER(8,2) NOT NULL
+)
+LOGGING;
+
+ALTER TABLE marketing ADD CONSTRAINT marketing_pk PRIMARY KEY ( marketing_id );
+
+ALTER TABLE marketing
+    ADD CONSTRAINT marketing_midia_fk FOREIGN KEY ( midia_midia_id )
+        REFERENCES midia ( midia_id )
+    NOT DEFERRABLE;
+    
+/
+
+
+
+
+----------------------------------------- Inserir dados rondom na tabela MARKETING -----------------------------------------------
+
+create or replace PROCEDURE insert_tabela_MARKETING IS 
+
+
+V_MARKETING_ID MARKETING.MARKETING_ID%TYPE;
+V_NAME MARKETING.NAME%TYPE;
+V_MIDIA_ID MARKETING.MIDIA_MIDIA_ID%TYPE;
+V_FK_MARKETING SALES.MARKETING_ID%TYPE;
+V_CATEGORY MARKETING.CATEGORY%TYPE;
+V_COST MARKETING.COST%TYPE;
+V_START_DATE DATE;
+V_END_DATE DATE;
+V_DESCRIPTION MARKETING.DESCRIPTION%TYPE;
+V_COUNT NUMBER(6);
+V_RAND NUMBER(6);
+V_VALOR_MAX NUMBER(6);
+V_VALOR_MIN NUMBER(6);
+
+
+
+BEGIN
+    
+
+
+    SELECT MIN(MARKETING_ID),MAX(MARKETING_ID)-- + TRUNC(dbms_random.VALUE())
+    INTO V_VALOR_MIN, V_VALOR_MAX
+    FROM SALES;
+
+
+    for I in V_VALOR_MIN..V_VALOR_MAX LOOP
+    
+    
+          --- MIDIA_ID ---
+        SELECT COUNT(*)INTO V_COUNT FROM MIDIA; -- Conta registos na Lookup 
+        V_RAND := TRUNC(dbms_random.VALUE(0,V_COUNT)); -- pega um aleatoriamente
+        SELECT MIDIA_ID INTO V_MIDIA_ID FROM MIDIA
+        OFFSET V_RAND ROWS 
+        FETCH FIRST 1 ROW ONLY;
+    
+
+        --- ID ---
+        V_MARKETING_ID := I;  
+        
+        --- NAME ---    
+        SELECT COUNT(*) INTO V_COUNT FROM MIDIA;
+        V_NAME := TRUNC(DBMS_RANDOM.VALUE(0,V_COUNT));
+        SELECT NAME INTO V_NAME FROM MIDIA
+        OFFSET V_RAND ROWS
+        FETCH FIRST 1 ROW ONLY;      
+        
+        --- DESCRIPTIONS ---
+        SELECT COUNT(*) INTO V_COUNT FROM PRODUCT_DESCRIPTIONS;
+        V_RAND := TRUNC(dbms_random.VALUE(0,V_COUNT));
+        SELECT PROD_NAME INTO V_DESCRIPTION FROM PRODUCT_DESCRIPTIONS 
+        OFFSET V_RAND ROWS
+        FETCH FIRST 1 ROW ONLY;
+      
+        
+        --- DATE ---
+        V_START_DATE := TO_DATE(TRUNC(DBMS_RANDOM.VALUE(1,5373484)),'J');
+        V_END_DATE := TO_DATE(TRUNC(DBMS_RANDOM.VALUE(TO_CHAR(V_START_DATE,'J'),5373484)),'J');
+
+        --- CATEGORY ---
+        SELECT COUNT(*) INTO V_COUNT FROM CATEGORIES;
+        V_RAND := TRUNC(dbms_random.VALUE(0,V_COUNT));
+        SELECT PROD_CATEGORY INTO V_CATEGORY FROM CATEGORIES 
+        OFFSET V_RAND ROWS
+        FETCH FIRST 1 ROW ONLY;
+        
+        
+        --- COST ---
+    
+        
+        V_COST := TRUNC(dbms_random.value(10,500));
+
+        
+        
+
+
+
+        INSERT INTO MARKETING(
+            MARKETING_ID,
+            NAME,
+            DESCRIPTION,
+            MIDIA_MIDIA_ID,
+            START_DATE,
+            END_DATE,           
+            CATEGORY,
+            COST
+        )VALUES(
+            V_MARKETING_ID,
+            V_NAME,     
+            V_DESCRIPTION,
+            V_MIDIA_ID,
+            V_START_DATE,
+            V_END_DATE,
+            V_CATEGORY,
+            V_COST
+        );
+
+    END LOOP;
+
+
+END;
+/
 
 
 
