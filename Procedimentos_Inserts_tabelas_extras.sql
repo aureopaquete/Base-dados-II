@@ -160,7 +160,7 @@ BEGIN
         --- COST ---
     
         
-        V_COST := TRUNC(dbms_random.value(10,500));
+        V_COST := TRUNC(dbms_random.value(100,500));
 
         
         
