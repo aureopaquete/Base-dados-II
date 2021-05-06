@@ -203,12 +203,9 @@ GRANT SELECT ON MIDIA to bdii_1012639;
 
 
 
+---------------------------------------------------------GITHUB-----------------------------------------------------------------
 
-
----------------------------------------------------- Carregamento das ETL ------------------------------------------------------
-
-
-------------------------------------------------- Criação das tabelas ----------------------------------------------------
+--------------------------------------------- Criação das tabelas DIM E MINDIM -------------------------------------------------
 CREATE TABLE dim_customers (
     cust_sk                  NUMBER(6) NOT NULL,
     cust_id                  NUMBER NOT NULL,
@@ -309,7 +306,8 @@ CREATE TABLE dim_marketing (
     start_date       DATE NOT NULL,
     end_date         DATE NOT NULL,
     category         VARCHAR2(50) NOT NULL,
-    cost             NUMBER(8,2) NOT NULL
+    cost             NUMBER(8,2) NOT NULL,
+    midia_name       VARCHAR2(50) NOT NULL
 );
 
 ALTER TABLE dim_marketing ADD CONSTRAINT dim_marketing_pk PRIMARY KEY ( marketing_sk );
@@ -420,4 +418,52 @@ ALTER TABLE fact_sales
         REFERENCES mindim_salary ( salary_sk );
         
         
+        
+             
+
+---------------------------------------------------------GITHUB-----------------------------------------------------------------
+
+------------------------------------------------- Carregamento das ETL ---------------------------------------------------------
+
+
+
+
+
+CREATE SEQUENCE DIM_MARKETING_SEQ;
+
+CREATE OR REPLACE PROCEDURE  ETL_DIM_MARKETING IS
+BEGIN
+    
+    INSERT INTO DIM_MARKETING(
+                     MARKETING_SK,               
+                     MARKETING_ID,
+                     NAME,
+                     DESCRIPTION,
+                     MIDIA_ID,
+                     START_DATE,
+                     END_DATE,
+                     CATEGORY,
+                     COST
+                   
+    )
+    SELECT DIM_MARKETING_SEQ.NEXTVAL,
+           MARKETING_ID,
+           MARKETING.NAME,
+           MARKETING.DESCRIPTION,
+           MIDIA.MIDIA_ID,
+           MARKETING.START_DATE,
+           MARKETING.END_DATE,
+           MARKETING.CATEGORY,
+           MARKETING.COST
+    FROM BDII_1012385.MARKETING, BDII_1012385.MIDIA 
+    WHERE BDII_1012385.MARKETING.MIDIA_MIDIA_ID = BDII_1012385.MIDIA.MIDIA_ID
+        AND MARKETING_ID NOT IN(
+          SELECT MARKETING_ID
+          FROM DIM_MARKETING
+        );
+END;
+/
+
+
+
 
