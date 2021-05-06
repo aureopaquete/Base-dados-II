@@ -465,5 +465,56 @@ END;
 /
 
 
+-------------------------------------------------
+
+create or replace PROCEDURE  ETL_DIM_PRODUCTS IS
+BEGIN
+
+    INSERT INTO DIM_PRODUCTS(
+                     PROD_SK,               
+                     PROD_ID,
+                     PROD_NAME,                    
+                     prod_weight_class,
+                     prod_unit_of_measure,
+                     prod_pack_size,
+                     prod_status,
+                     prod_list_price,
+                     prod_min_price,                     
+                     prod_cost,
+                     prod_desc,
+                     prod_subcategory,
+                     PROD_CATEGORY      
+
+    )
+    SELECT DIM_PRODUCTS_SEQ.NEXTVAL,
+           PROD_ID,
+           PROD_NAME,
+           PROD_WEIGHT_CLASS,
+           NVL(PROD_UNIT_OF_MEASURE,'Não Tem'),
+           PROD_PACK_SIZE,
+           PROD_STATUS,
+           PROD_LIST_PRICE,
+           PROD_MIN_PRICE,
+           PROD_COST,
+           PROD_DESC,
+           PROD_SUBCATEGORY,
+           PROD_CATEGORY
+    FROM PRODUCTS, PRODUCT_DESCRIPTIONS, SUB_CATEGORIES,CATEGORIES
+    WHERE PRODUCTS.SUB_CAT_ID = SUB_CATEGORIES.SUB_CAT_ID
+        AND PRODUCTS.PROD_DESCRIPTIONS_ID = PRODUCT_DESCRIPTIONS.PROD_DESC_ID
+        AND SUB_CATEGORIES.CAT_ID = CATEGORIES.CAT_ID
+        AND PROD_ID NOT IN(
+          SELECT PROD_ID
+          FROM DIM_PRODUCTS
+        );
+END;
+/
+
+EXEC ETL_DIM_PRODUCTS;
+
+SELECT * FROM DIM_MARKETING;
+SELECT * FROM DIM_PRODUCTS;
+
+
 
 
