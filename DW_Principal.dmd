@@ -1,0 +1,8 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<OSDM_Design class="oracle.dbtools.crest.model.design.Design" name="DW_Principal" id="C38032C0-685F-B21B-E128-7E7B7BF6FC62" version="3.5">
+<createdBy>Aureo Paquete</createdBy>
+<createdTime>2021-04-29 10:18:22 UTC</createdTime>
+<ownerDesignName>DW_Principal</ownerDesignName>
+<capitalNames>false</capitalNames>
+<designId>C38032C0-685F-B21B-E128-7E7B7BF6FC62</designId>
+</OSDM_Design>
