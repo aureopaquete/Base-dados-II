@@ -361,10 +361,20 @@ CREATE TABLE dim_date (
 ALTER TABLE dim_date ADD CONSTRAINT date_pk PRIMARY KEY ( date_id );
 
 
+-------------------------------------------------------
+
+
+CREATE TABLE dim_time (
+    time_id   NUMBER(9) NOT NULL,
+    name      VARCHAR2(50 BYTE) NOT NULL
+);
+
+ALTER TABLE dim_time ADD CONSTRAINT dim_time_pk PRIMARY KEY ( time_id );
+
+
 
 
 ---------------------------------------------------------
-
 
 
 
@@ -377,7 +387,8 @@ CREATE TABLE fact_sales (
     dim_products_prod_sk         NUMBER(6) NOT NULL,
     dim_customers_cust_sk        NUMBER(6) NOT NULL,
     mindim_cities_city_sk        NUMBER(6) NOT NULL,
-    mindim_salary_salary_sk      NUMBER(6) NOT NULL
+    mindim_salary_salary_sk      NUMBER(6) NOT NULL,
+    dim_time_time_id             NUMBER(9) NOT NULL
 );
 
 ALTER TABLE fact_sales
@@ -387,7 +398,8 @@ ALTER TABLE fact_sales
                                           dim_marketing_marketing_sk,
                                           dim_employee_employee_sk,
                                           mindim_cities_city_sk,
-                                          mindim_salary_salary_sk );
+                                          mindim_salary_salary_sk,
+                                          dim_time_time_id );
 
 ALTER TABLE fact_sales
     ADD CONSTRAINT fact_sales_dim_customers_fk FOREIGN KEY ( dim_customers_cust_sk )
@@ -410,13 +422,16 @@ ALTER TABLE fact_sales
         REFERENCES dim_products ( prod_sk );
 
 ALTER TABLE fact_sales
+    ADD CONSTRAINT fact_sales_dim_time_fk FOREIGN KEY ( dim_time_time_id )
+        REFERENCES dim_time ( time_id );
+
+ALTER TABLE fact_sales
     ADD CONSTRAINT fact_sales_mindim_cities_fk FOREIGN KEY ( mindim_cities_city_sk )
         REFERENCES mindim_cities ( city_sk );
 
 ALTER TABLE fact_sales
     ADD CONSTRAINT fact_sales_mindim_salary_fk FOREIGN KEY ( mindim_salary_salary_sk )
         REFERENCES mindim_salary ( salary_sk );
-        
         
         
              
@@ -490,7 +505,7 @@ BEGIN
            PROD_ID,
            PROD_NAME,
            PROD_WEIGHT_CLASS,
-           NVL(PROD_UNIT_OF_MEASURE,'Não Tem'),
+           nvl(PROD_UNIT_OF_MEASURE,'Não Tem'),
            PROD_PACK_SIZE,
            PROD_STATUS,
            PROD_LIST_PRICE,
@@ -514,6 +529,7 @@ EXEC ETL_DIM_PRODUCTS;
 
 SELECT * FROM DIM_MARKETING;
 SELECT * FROM DIM_PRODUCTS;
+select * from products; 
 
 
 
