@@ -206,6 +206,7 @@ GRANT SELECT ON MIDIA to bdii_1012639;
 ---------------------------------------------------------GITHUB-----------------------------------------------------------------
 
 --------------------------------------------- Criação das tabelas DIM E MINDIM -------------------------------------------------
+------------------------------------------------- Criação das tabelas ----------------------------------------------------
 CREATE TABLE dim_customers (
     cust_sk                  NUMBER(6) NOT NULL,
     cust_id                  NUMBER NOT NULL,
@@ -302,12 +303,12 @@ CREATE TABLE dim_marketing (
     marketing_id     NUMBER(6) NOT NULL,
     name             VARCHAR2(50) NOT NULL,
     description      VARCHAR2(50) NOT NULL,
-    midia_midia_id   NUMBER(6) NOT NULL,
+    midia_id   NUMBER(6) NOT NULL,
     start_date       DATE NOT NULL,
     end_date         DATE NOT NULL,
     category         VARCHAR2(50) NOT NULL,
-    cost             NUMBER(8,2) NOT NULL,
-    midia_name       VARCHAR2(50) NOT NULL
+    cost             NUMBER(8,2) NOT NULL
+   
 );
 
 ALTER TABLE dim_marketing ADD CONSTRAINT dim_marketing_pk PRIMARY KEY ( marketing_sk );
@@ -315,13 +316,12 @@ ALTER TABLE dim_marketing ADD CONSTRAINT dim_marketing_pk PRIMARY KEY ( marketin
 
 
 --------------------------------------------------
-
 CREATE TABLE dim_products (
     prod_sk                NUMBER(6) NOT NULL,
     prod_id                NUMBER NOT NULL,
     prod_name              VARCHAR2(50)
         CONSTRAINT ckc_prod_name_prod_desc NOT NULL,
-    sub_cat_id             NUMBER(6) NOT NULL,
+    --sub_cat_id             NUMBER(6) NOT NULL,
     prod_weight_class      NUMBER(2),
     prod_unit_of_measure   VARCHAR2(20 BYTE),
     prod_pack_size         VARCHAR2(30 BYTE),
@@ -331,10 +331,11 @@ CREATE TABLE dim_products (
         CONSTRAINT ckc_prod_list_price_products NOT NULL,
     prod_min_price         NUMBER(8,2)
         CONSTRAINT ckc_prod_min_price_products NOT NULL,
-    prod_descriptions_id   NUMBER(6) NOT NULL,
+    --prod_descriptions_id   NUMBER(6) NOT NULL,
     prod_cost              NUMBER(8,2),
     prod_desc              VARCHAR2(4000 BYTE)
         CONSTRAINT ckc_prod_desc_prod_desc NOT NULL,
+    prod_category          VARCHAR2(50) NOT NULL,
     prod_subcategory       VARCHAR2(50 BYTE)
         CONSTRAINT ckc_prod_subcategory_sub_cate NOT NULL
 );
@@ -349,18 +350,19 @@ ALTER TABLE dim_products ADD CONSTRAINT dim_products_pk PRIMARY KEY ( prod_sk );
 
 
 CREATE TABLE dim_date (
-    date_id        NUMBER(6) NOT NULL,
-    day_of_year    NUMBER(2) NOT NULL,
+    date_id        NUMBER(9) NOT NULL,
+    day_of_year    NUMBER(3) NOT NULL,
     day_of_month   NUMBER(2) NOT NULL,
     day_of_week    NUMBER(1) NOT NULL,
-    month          NUMBER(2) NOT NULL,
+    week_month     NUMBER(4) NOT NULL,
+    month          NUMBER(9) NOT NULL,
     trimester      NUMBER(1) NOT NULL,
     year           NUMBER(4) NOT NULL
 );
 
 ALTER TABLE dim_date ADD CONSTRAINT date_pk PRIMARY KEY ( date_id );
 
-
+DROP TABLE DIM_DATE;
 -------------------------------------------------------
 
 
@@ -373,10 +375,7 @@ ALTER TABLE dim_time ADD CONSTRAINT dim_time_pk PRIMARY KEY ( time_id );
 
 
 
-
 ---------------------------------------------------------
-
-
 
 CREATE TABLE fact_sales (
     quantity_sold                NUMBER(9) NOT NULL,
@@ -530,6 +529,117 @@ EXEC ETL_DIM_PRODUCTS;
 SELECT * FROM DIM_MARKETING;
 SELECT * FROM DIM_PRODUCTS;
 select * from products; 
+
+
+
+
+--------------------------------------------- DIM TIME-------------------------------------------------
+
+
+CREATE OR REPLACE PROCEDURE ETL_DIM_TIME IS
+
+T_COUNT NUMBER(1);
+
+BEGIN
+
+    SELECT COUNT(*)
+    INTO T_COUNT
+    FROM DIM_TIME;
+    
+    IF T_COUNT = 0 THEN
+        INSERT INTO DIM_TIME(TIME_ID, NAME)VALUES(1,'MORNING');
+        INSERT INTO DIM_TIME(TIME_ID, NAME)VALUES(2,'EVENING');
+    END IF;
+END;
+/
+
+EXEC ETL_DIM_TIME;
+
+SELECT * FROM DIM_TIME;
+
+
+
+------------------------------------------------- ETL_DATE --------------------------------------------------
+CREATE SEQUENCE DIM_DATE_SEQ;
+ 
+
+
+
+CREATE OR REPLACE PROCEDURE ETL_DIM_DATE (YEAR_INIT NUMBER, YEAR_END NUMBER) IS
+
+BEGIN 
+
+IF YEAR_INIT < YEAR_END THEN 
+        FOR CURRENT_YEAR IN YEAR_INIT..YEAR_END LOOP
+            ETL_YEAR(CURRENT_YEAR);
+        END LOOP;
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Ano final que ser maior inicial');
+    END IF;  
+END;
+/
+
+
+
+
+CREATE OR REPLACE PROCEDURE ETL_YEAR( E_YEAR NUMBER) IS
+
+--V_DATE_ID DIM_DATE.DATE_ID%TYPE;
+V_DAY_OF_YEAR DIM_DATE.DAY_OF_YEAR%TYPE;
+V_DAY_OF_MONTH DIM_DATE.DAY_OF_MONTH%TYPE;
+V_DAY_OF_WEEK DIM_DATE.DAY_OF_WEEK%TYPE;
+V_MONTH DIM_DATE.MONTH%TYPE;
+V_TRIMESTER DIM_DATE.TRIMESTER%TYPE;
+V_YEAR DIM_DATE.YEAR%TYPE;
+V_WEEK_MONTH DIM_DATE.WEEK_MONTH%TYPE;
+V_DATE DATE;
+V_NUMBER_DAYS NUMBER(3);
+ 
+BEGIN
+
+  V_NUMBER_DAYS := ADD_MONTHS(TRUNC(TO_DATE('01/01' || E_YEAR, 'DD/MM/YYYY'),'Y'),12)
+                                - TRUNC(TO_DATE('01/01' || E_YEAR, 'DD/MM/YYYY'),'Y');
+        
+  
+  FOR I IN 0..(V_NUMBER_DAYS - 1 ) LOOP
+    V_DATE := TRUNC(TO_DATE('01/01' || E_YEAR, 'DD/MM/YYYY'),'Y')+ I;
+    V_DAY_OF_YEAR := TO_CHAR(V_DATE,'DDD');
+    V_DAY_OF_MONTH := TO_CHAR(V_DATE,'DD');
+    V_DAY_OF_WEEK := TO_CHAR(V_DATE,'D');
+    V_WEEK_MONTH := TO_CHAR(V_DATE,'W');
+    V_MONTH := TO_CHAR(V_DATE,'MM');
+    V_TRIMESTER := TO_CHAR(V_DATE,'Q'); -- QUARTER DO ANO 1,2,3,4
+    V_YEAR := TO_CHAR(V_DATE,'YYYY');
+
+
+
+
+    INSERT INTO DIM_DATE (
+            DATE_ID,
+            DAY_OF_YEAR,
+            DAY_OF_MONTH,
+            DAY_OF_WEEK,
+            WEEK_MONTH,
+            MONTH,
+            TRIMESTER,
+            YEAR
+        )VALUES(
+            DIM_DATE_SEQ.NEXTVAL,
+            V_DAY_OF_YEAR,
+            V_DAY_OF_MONTH,
+            V_DAY_OF_WEEK,
+            V_WEEK_MONTH,
+            V_MONTH,
+            V_TRIMESTER,
+            V_YEAR            
+        );
+      END LOOP;
+END;
+/
+
+EXEC ETL_DIM_DATE(2020,2021);
+EXEC ETL_YEAR(2021);
+
 
 
 
