@@ -643,4 +643,305 @@ EXEC ETL_YEAR(2021);
 
 
 
+----------------------------------------------------- DIM_MIN --------------------------------------------------------
+----------------------------------------------------- CITIES  -----------------------------------------------------
+
+CREATE SEQUENCE ETL_MINDIM_CITIES_SEQ;
+
+
+CREATE OR REPLACE PROCEDURE ETL_MINDIM_CITIES IS 
+
+BEGIN
+
+    FOR DISTINCT_DATA IN (
+        SELECT DISTINCT 
+            CITY_ID,
+            COUNTRY_NAME,
+            COUNTRY_SUBREGIONS.COUNTRY_SUBREGION,
+            COUNTRY_REGIONS.COUNTRY_REGION,
+            STATE_PROVINCES.STATE_PROVINCE                
+            
+        FROM                
+            CUSTOMERS,
+            CITIES,
+            COUNTRIES,
+            COUNTRY_SUBREGIONS,
+            COUNTRY_REGIONS,
+            STATE_PROVINCES
+            
+        WHERE CUSTOMERS.CUST_CITY = CITIES.CITY_ID
+            AND CITIES.STATE_PROVINCE = STATE_PROVINCES.STATE_PROVINCE_ID
+            AND STATE_PROVINCES.COUNTRY = COUNTRIES.COUNTRY_ID
+            AND COUNTRIES.COUNTRY_SUBREGION = COUNTRY_SUBREGIONS.COUNTRY_SUBREGION_ID
+            AND COUNTRY_SUBREGIONS.COUNTRY_REGION = COUNTRY_REGIONS.COUNTRY_REGION_ID
+            
+            
+    )LOOP
+    
+        INSERT INTO MINDIM_CITIES(
+            CITY_SK,
+            CITY,
+            COUNTRY_NAME,
+            COUNTRY_SUBREGION,
+            COUNTRY_REGION,
+            STATE_PROVINCE,
+            GENDER  
+        )VALUES (
+            ETL_MINDIM_CITIES_SEQ.NEXTVAL,
+            DISTINCT_DATA.CITY_ID,
+            DISTINCT_DATA.COUNTRY_NAME,
+            DISTINCT_DATA.COUNTRY_SUBREGION,
+            DISTINCT_DATA.COUNTRY_REGION,
+            DISTINCT_DATA.STATE_PROVINCE,
+            'M'   
+        );
+        
+        
+        INSERT INTO MINDIM_CITIES(
+            CITY_SK,
+            CITY,
+            COUNTRY_NAME,
+            COUNTRY_SUBREGION,
+            COUNTRY_REGION,
+            STATE_PROVINCE,
+            GENDER  
+        )VALUES (
+            ETL_MINDIM_CITIES_SEQ.NEXTVAL,
+            DISTINCT_DATA.CITY_ID,
+            DISTINCT_DATA.COUNTRY_NAME,
+            DISTINCT_DATA.COUNTRY_SUBREGION,
+            DISTINCT_DATA.COUNTRY_REGION,
+            DISTINCT_DATA.STATE_PROVINCE,
+            'F'   
+        );    
+    END LOOP;    
+END;
+/
+
+EXEC ETL_MINDIM_CITIES;
+
+SELECT * FROM MINDIM_CITIES
+ORDER BY CITY_SK,
+            CITY,
+            COUNTRY_NAME,
+            COUNTRY_SUBREGION,
+            COUNTRY_REGION,
+            STATE_PROVINCE,
+            GENDER;
+            
+SELECT COUNT(COUNTRY_NAME) FROM MINDIM_CITIES;
+
+
+
+
+
+-------------------------------------------------------- ETL CUSTOMER ---------------------------------------------------------
+
+
+CREATE SEQUENCE ETL_DIM_CUSTOMERS_SEQ;
+
+
+CREATE OR REPLACE PROCEDURE ETL_DIM_CUSTOMERS IS
+
+BEGIN
+
+INSERT INTO DIM_CUSTOMERS(
+
+        CUST_SK,
+        CUST_ID,
+        CUST_FIRST_NAME,
+        CUST_LAST_NAME,
+        CUST_GENDER,
+        CUST_YEAR_OF_BIRTH,
+        CUST_MARITAL_STATUS,
+        CUST_STREET_ADDRESS,
+        CUST_POSTAL_CODE,
+        CUST_MAIN_PHONE_NUMBER,
+        CUST_INCOME_LEVEL,
+        CUST_CREDIT_LIMIT,
+        CUST_EMAIL,
+        CUST_TOTAL,
+        CUST_CITY,
+        CUST_MONTH_OF_BIRTH,
+        CUST_BIRTH_DATE,
+        CUST_DAY_OF_BIRTH,
+        MINDIM_CITIES_CITY_SK
+    ) SELECT 
+        ETL_DIM_CUSTOMERS_SEQ.NEXTVAL,
+        CUST_ID,
+        CUST_FIRST_NAME,
+        CUST_LAST_NAME,
+        CUST_GENDER,
+        CUST_YEAR_OF_BIRTH,
+        NVL(CUST_MARITAL_STATUS, 'Outro'),
+        CUST_STREET_ADDRESS,
+        CUST_POSTAL_CODE,
+        CUST_MAIN_PHONE_NUMBER,
+        CUST_INCOME_LEVEL,
+        CUST_CREDIT_LIMIT,
+        CUST_EMAIL,
+        CUST_TOTAL,
+        CUST_CITY,
+        CUST_MONTH_OF_BIRTH,
+        CUST_BIRTH_DATE,
+        CUST_DAY_OF_BIRTH,
+        MINDIM_CITIES.CITY_SK
+    FROM 
+       CUSTOMERS, MINDIM_CITIES 
+    WHERE CUSTOMERS.CUST_CITY = MINDIM_CITIES.CITY
+    AND CUSTOMERS.CUST_GENDER = MINDIM_CITIES.GENDER
+        AND CUST_ID NOT IN(
+          SELECT CUST_ID
+          FROM DIM_CUSTOMERS
+        );
+
+END;
+/
+
+
+EXEC ETL_DIM_CUSTOMERS;
+
+DELETE DIM_CUSTOMERS;
+
+SELECT COUNT(*)FROM DIM_CUSTOMERS;
+
+
+
+------------------------------------------------- MINDIM_SALRY ---------------------------------------------------
+
+CREATE SEQUENCE MINDIM_SALARY_SEQ;
+
+create or replace PROCEDURE ETL_MINDIM_SALARY IS
+
+    TYPE LEVELARRAY IS VARRAY (5) OF VARCHAR2(1);
+
+V_SAL_LEVEL LEVELARRAY := LEVELARRAY('A','B','C','D');
+V_COM_LEVEL LEVELARRAY := LEVELARRAY('A','B','C','D','-');
+V_COUNT NUMBER(5);
+
+BEGIN 
+    SELECT COUNT(*)
+    INTO V_COUNT
+    FROM MINDIM_SALARY;
+
+   IF V_COUNT != (V_SAL_LEVEL.COUNT * V_COM_LEVEL.COUNT) THEN
+        DELETE FROM MINDIM_SALARY;
+
+        FOR SAL IN 1..V_SAL_LEVEL.COUNT LOOP
+           FOR COMM IN 1..V_COM_LEVEL.COUNT LOOP
+
+        INSERT INTO MINDIM_SALARY (
+                                    SALARY_SK,
+                                    SAL,
+                                    COM                                   
+                              )VALUES(
+                                    MINDIM_SALARY_SEQ.NEXTVAL,
+                                    V_SAL_LEVEL(SAL),
+                                    V_COM_LEVEL(COMM)
+                              );
+                    END LOOP;                    
+            END LOOP;
+       END IF;
+END;
+/
+
+EXEC ETL_MINDIM_SALARY;
+    
+        
+SELECT * FROM employees;
+
+
+
+------------------------------------------- ETL_DIM_EMPLOYEES -------------------------------------------------------------
+
+CREATE SEQUENCE ETL_EMPLOYEES_SEQ;
+
+create or replace PROCEDURE ETL_DIM_EMPLOYEES IS
+
+    CURSOR C_EMPLOYEES IS
+        SELECT *
+        FROM EMPLOYEES;
+
+V_CATEGORY VARCHAR2(1);
+V_COMMISSION VARCHAR2(1);
+V_SK NUMBER(9);
+V_COUNT NUMBER(2);
+
+BEGIN
+
+    ETL_MINDIM_SALARY;
+
+    FOR EMPLOYEE IN C_EMPLOYEES LOOP
+        IF EMPLOYEE.SALARY < 2000 THEN
+                V_CATEGORY := 'D';
+            ELSIF EMPLOYEE.SALARY < 4000 THEN
+                V_CATEGORY := 'C';
+            ELSIF EMPLOYEE.SALARY < 6000 THEN
+                 V_CATEGORY := 'B';
+            ELSE
+                V_CATEGORY := 'A';
+        END IF;
+
+        IF EMPLOYEE.COMMISSION_PCT IS NULL THEN
+                V_COMMISSION := '-';
+            ELSIF EMPLOYEE.COMMISSION_PCT < 0.60 THEN
+                V_COMMISSION := 'D';
+            ELSIF EMPLOYEE.COMMISSION_PCT < 0.75 THEN
+                V_COMMISSION := 'C';
+            ELSIF EMPLOYEE.COMMISSION_PCT < 0.90 THEN
+                V_COMMISSION := 'B';
+            ELSE
+            V_COMMISSION := 'A';
+        END IF;
+
+    INSERT INTO DIM_EMPLOYEE( 
+        EMPLOYEE_SK,
+        EMPLOYEE_ID,
+        FIRST_NAME,
+        LAST_NAME,
+        EMAIL,
+        PHONE_NUMBER,
+        HIRE_DATE,
+        JOB_ID,
+        SALARY,
+        COMMISSION_PCT,
+        MANAGER_ID,
+        MINDIM_SALARY_SALARY_SK
+    )VALUES(
+        ETL_EMPLOYEES_SEQ.NEXTVAL,
+        EMPLOYEE.EMPLOYEE_ID,
+        EMPLOYEE.FIRST_NAME,
+        EMPLOYEE.LAST_NAME,        
+        EMPLOYEE.EMAIL,
+        EMPLOYEE.PHONE_NUMBER,
+        EMPLOYEE.HIRE_DATE,
+        EMPLOYEE.JOB_ID,        
+        EMPLOYEE.SALARY,
+        EMPLOYEE.COMMISSION_PCT,        
+        EMPLOYEE.MANAGER_ID,
+        (
+            SELECT SALARY_SK         
+            FROM MINDIM_SALARY        
+            WHERE SAL = V_CATEGORY        
+                AND COM = V_COMMISSION
+        )
+    );
+    END LOOP;
+END;
+/
+
+EXEC ETL_DIM_EMPLOYEES;
+
+SELECT * FROM DIM_EMPLOYEE;
+
+
+
+
+
+
+
+
+
+
+
 
