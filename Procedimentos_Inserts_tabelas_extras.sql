@@ -940,6 +940,192 @@ SELECT * FROM DIM_EMPLOYEE;
 
 
 
+--------------------------------------------------- SALES FACTS ----------------------------------------------------------------
+
+------------------------------------------------- FUN플O CUSTOMERS -------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION CUSTOMERS_PK (PK_CUST NUMBER) RETURN NUMBER IS
+
+V_SK_CUST DIM_CUSTOMERS.CUST_SK%TYPE;
+
+BEGIN 
+    
+    SELECT CUST_SK
+    INTO V_SK_CUST
+    FROM DIM_CUSTOMERS
+    WHERE CUST_ID = PK_CUST;
+
+    RETURN V_SK_CUST;
+
+END;
+/
+
+
+------------------------------------------------- FUN플O EMPLOYEE -------------------------------------------------------------
+ 
+ 
+CREATE OR REPLACE FUNCTION EMPLOYEE_PK (PK_EMPLOYEE NUMBER) RETURN NUMBER IS
+
+V_SK_EMPLOYEE DIM_EMPLOYEE.EMPLOYEE_SK%TYPE;
+
+BEGIN 
+    
+    SELECT EMPLOYEE_SK
+    INTO V_SK_EMPLOYEE
+    FROM DIM_EMPLOYEE
+    WHERE EMPLOYEE_ID = PK_EMPLOYEE;
+
+    RETURN V_SK_EMPLOYEE;
+
+END;
+/
+
+------------------------------------------------- FUN플O PRODUCTS -------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION PRODUCTS_PK (PK_PRODUCTS NUMBER) RETURN NUMBER IS
+
+V_SK_PRODUCTS DIM_PRODUCTS.PROD_SK%TYPE;
+
+BEGIN 
+    
+    SELECT PROD_SK
+    INTO V_SK_PRODUCTS
+    FROM DIM_PRODUCTS
+    WHERE PROD_ID = PK_PRODUCTS;
+
+    RETURN V_SK_PRODUCTS;
+
+END;
+/
+
+SELECT * FROM DIM_PRODUCTS;
+
+
+
+------------------------------------------------- FUN플O MARKETING -------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION MARKETING_PK (PK_MARKETING NUMBER) RETURN NUMBER IS
+
+V_SK_MARKETING DIM_MARKETING.MARKETING_SK%TYPE;
+
+BEGIN 
+    
+    SELECT MARKETING_SK
+    INTO V_SK_MARKETING
+    FROM DIM_MARKETING
+    WHERE MARKETING_ID = PK_MARKETING;
+
+    RETURN V_SK_MARKETING;
+
+END;
+/
+
+
+SELECT * FROM DIM_MARKETING;
+
+
+
+
+
+------------------------------------------------- FUN플O DATE -------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION DATE_PK (PK_DATE NUMBER) RETURN NUMBER IS
+
+V_DATE SALES.SALE_DATE%TYPE;
+V_DIM_DATE_ID DIM_DATE.DATE_ID%TYPE;
+
+BEGIN 
+    
+    SELECT SALE_DATE
+    INTO V_DATE
+    FROM SALES
+    WHERE SALE_ID = PK_DATE;
+    
+    SELECT DATE_ID
+    INTO V_DIM_DATE_ID
+    FROM DIM_DATE
+    WHERE DATE_ID = PK_DATE
+        AND DAY_OF_MONTH = TO_NUMBER(TO_CHAR(V_DATE, 'DD'))
+        AND MONTH = TO_NUMBER (TO_CHAR(V_DATE, 'MM'))
+        AND YEAR = TO_NUMBER(TO_CHAR(V_DATE,'YYYY'));  
+    
+
+    RETURN V_DIM_DATE_ID;
+
+END;
+/
+
+
+
+------------------------------------------------- FUN플O TIME -------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION TIME_PK(PK_TIME NUMBER) RETURN NUMBER IS
+
+V_TIME NUMBER := 0; 
+
+BEGIN
+
+V_TIME := TO_NUMBER(TO_CHAR(PK_TIME, 'HH24'));
+
+    IF V_TIME > 0 AND V_TIME < 12 THEN
+        RETURN 1;
+    ELSE
+        RETURN 2;
+        
+    END IF;
+END;
+/
+
+
+------------------------------------------------- FUN플O SALARY -------------------------------------------------------------
+
+
+CREATE OR REPLACE FUNCTION SALARY_PK (PK_SALARY NUMBER) RETURN NUMBER IS
+
+V_SALARY_SK DIM_EMPLOYEE.MINDIM_SALARY_SALARY_SK%TYPE;
+
+BEGIN 
+    
+    SELECT MINDIM_SALARY_SALARY_SK
+    INTO V_SALARY_SK
+    FROM DIM_EMPLOYEE
+    WHERE EMPLOYEE_ID = PK_SALARY;
+      
+
+    RETURN V_SALARY_SK;
+
+END;
+/
+
+
+
+------------------------------------------------- FUN플O CITIES -------------------------------------------------------------
+
+
+
+
+CREATE OR REPLACE FUNCTION CITIES_PK (PK_CITIES NUMBER) RETURN NUMBER IS
+
+V_CITIES_SK DIM_CUSTOMERS.MINDIM_CITIES_CITY_SK%TYPE;
+
+BEGIN 
+    
+    SELECT MINDIM_CITIES_CITY_SK
+    INTO V_CITIES_SK
+    FROM DIM_CUSTOMERS
+    WHERE CUST_ID = PK_CITIES;
+      
+
+    RETURN V_CITIES_SK;
+
+END;
+/
+
+
+
 
 
 
