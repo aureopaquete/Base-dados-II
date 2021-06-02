@@ -437,10 +437,17 @@ ALTER TABLE fact_sales
 
 ---------------------------------------------------------GITHUB-----------------------------------------------------------------
 
-------------------------------------------------- Carregamento das ETL ---------------------------------------------------------
+----------------------------------------- Carregamento das ETL -------------------------------------
 
+drop synonym MIDIA;
+drop synonym MARKETING;
 
---------------------------------------------------- Tabela Marketing ----------------------------------------
+create synonym MARKETING for BDII_1012385.MARKETING; 
+create synonym MIDIA for BDII_1012385.MIDIA; 
+
+SELECT * FROM MARKETING;
+SELECT * FROM MIDIA;
+
 
 
 CREATE SEQUENCE DIM_MARKETING_SEQ;
@@ -469,8 +476,8 @@ BEGIN
            MARKETING.END_DATE,
            MARKETING.CATEGORY,
            MARKETING.COST
-    FROM BDII_1012385.MARKETING, BDII_1012385.MIDIA 
-    WHERE BDII_1012385.MARKETING.MIDIA_MIDIA_ID = BDII_1012385.MIDIA.MIDIA_ID
+    FROM MARKETING,MIDIA 
+    WHERE MARKETING.MIDIA_MIDIA_ID = MIDIA.MIDIA_ID
         AND MARKETING_ID NOT IN(
           SELECT MARKETING_ID
           FROM DIM_MARKETING
@@ -479,7 +486,19 @@ END;
 /
 
 
-------------------------------------------------- Tabela Products --------------------------------------------
+EXEC ETL_DIM_MARKETING;
+
+
+/
+
+
+SELECT MIN(MARKETING_SK) FROM DIM_MARKETING;
+
+
+
+--------------------------------- DIM PRODUCTS ------------------------------------------
+
+
 
 create or replace PROCEDURE  ETL_DIM_PRODUCTS IS
 BEGIN
@@ -504,7 +523,7 @@ BEGIN
            PROD_ID,
            PROD_NAME,
            PROD_WEIGHT_CLASS,
-           nvl(PROD_UNIT_OF_MEASURE,'Não Tem'),
+           NVL(PROD_UNIT_OF_MEASURE,'Não Tem'),
            PROD_PACK_SIZE,
            PROD_STATUS,
            PROD_LIST_PRICE,
@@ -526,9 +545,9 @@ END;
 
 EXEC ETL_DIM_PRODUCTS;
 
-SELECT * FROM DIM_MARKETING;
-SELECT * FROM DIM_PRODUCTS;
-select * from products; 
+SELECT count(MARKETING_SK) FROM DIM_MARKETING;
+SELECT count(PROD_SK) FROM DIM_PRODUCTS;
+
 
 
 
@@ -637,8 +656,41 @@ BEGIN
 END;
 /
 
-EXEC ETL_DIM_DATE(2020,2021);
-EXEC ETL_YEAR(2021);
+EXEC ETL_DIM_DATE(1998,2000);
+EXEC ETL_YEAR(2000);
+
+
+DELETE DIM_DATE;
+SELECT * FROM DIM_DATE; 
+
+
+SELECT * FROM DIM_DATE
+order by  DATE_ID,
+            DAY_OF_YEAR,
+            DAY_OF_MONTH,
+            DAY_OF_WEEK,
+            WEEK_MONTH,
+            MONTH,
+            TRIMESTER,
+            YEAR ;
+
+SELECT ADD_MONTHS(TRUNC(TO_DATE('01/01/2020', 'DD/MM/YYYY'),'Y'),12)
+                                - TRUNC(TO_DATE('01/01/2020', 'DD/MM/YYYY'),'Y') FROM DUAL;
+
+SELECT (ADD_MONTHS(TO_DATE(SYSDATE),12)) FROM DUAL;
+
+SELECT ADD_MONTHS(TRUNC(TO_DATE('01/01/2021', 'DD/MM/YYYY'),'Y'),12) FROM DUAL;
+
+SELECT TRUNC(TO_DATE('01/01/2020', 'DD/MM/YYYY'),'Y') FROM DUAL;
+
+
+select  year,month,day_of_month,count(*)
+from dim_date
+group by year,month,day_of_month
+having count(*) > 1;
+
+select count(*)/2 from dim_date;
+select * from dim_date;
 
 
 
@@ -729,10 +781,7 @@ ORDER BY CITY_SK,
             STATE_PROVINCE,
             GENDER;
             
-SELECT COUNT(COUNTRY_NAME) FROM MINDIM_CITIES;
-
-
-
+SELECT COUNT(*) FROM MINDIM_CITIES;
 
 
 -------------------------------------------------------- ETL CUSTOMER ---------------------------------------------------------
@@ -803,7 +852,17 @@ EXEC ETL_DIM_CUSTOMERS;
 
 DELETE DIM_CUSTOMERS;
 
-SELECT COUNT(*)FROM DIM_CUSTOMERS;
+SELECT* FROM DIM_CUSTOMERS;
+
+
+select employee_pk(190) from dual;
+
+select CUST_ID, count(*)
+from DIM_CUSTOMERS
+group by CUST_ID
+having count(*) > 1;
+
+
 
 
 
@@ -847,31 +906,55 @@ END;
 
 EXEC ETL_MINDIM_SALARY;
     
-        
-SELECT * FROM employees;
+DELETE MINDIM_SALARY;    
+    
+SELECT * FROM MINDIM_SALARY;
 
 
 
 ------------------------------------------- ETL_DIM_EMPLOYEES -------------------------------------------------------------
 
+INSERT INTO DIM_EMPLOYEE( 
+        EMPLOYEE_SK,
+        EMPLOYEE_ID,
+        FIRST_NAME,
+        LAST_NAME,
+        EMAIL,
+        PHONE_NUMBER,
+        HIRE_DATE,
+        JOB_ID,
+        SALARY,
+        COMMISSION_PCT,
+        MANAGER_ID,
+        MINDIM_SALARY_SALARY_SK
+    )VALUES(-1, -1,'SEM','SEM','NADA','SEM', TO_DATE('01/01/1997','DD/MM/YYYY'),'SEM',0,0,0,-1 );
+
+
+ INSERT INTO MINDIM_SALARY (
+                                    SALARY_SK,
+                                    SAL,
+                                    COM                                   
+                              )VALUES(
+                                   -1,
+                                    '-',
+                                    '-'
+                              );
+SELECT * FROM MINDIM_SALARY;
+
+
 CREATE SEQUENCE ETL_EMPLOYEES_SEQ;
 
 create or replace PROCEDURE ETL_DIM_EMPLOYEES IS
 
-    CURSOR C_EMPLOYEES IS
-        SELECT *
-        FROM EMPLOYEES;
 
 V_CATEGORY VARCHAR2(1);
 V_COMMISSION VARCHAR2(1);
-V_SK NUMBER(9);
-V_COUNT NUMBER(2);
+
 
 BEGIN
 
-    ETL_MINDIM_SALARY;
-
-    FOR EMPLOYEE IN C_EMPLOYEES LOOP
+        
+    FOR EMPLOYEE IN (SELECT * FROM EMPLOYEES) LOOP
         IF EMPLOYEE.SALARY < 2000 THEN
                 V_CATEGORY := 'D';
             ELSIF EMPLOYEE.SALARY < 4000 THEN
@@ -917,10 +1000,10 @@ BEGIN
         EMPLOYEE.HIRE_DATE,
         EMPLOYEE.JOB_ID,        
         EMPLOYEE.SALARY,
-        EMPLOYEE.COMMISSION_PCT,        
+        NVL(EMPLOYEE.COMMISSION_PCT,0),        
         EMPLOYEE.MANAGER_ID,
         (
-            SELECT SALARY_SK         
+            SELECT NVL(SALARY_SK,0)         
             FROM MINDIM_SALARY        
             WHERE SAL = V_CATEGORY        
                 AND COM = V_COMMISSION
@@ -932,10 +1015,18 @@ END;
 
 EXEC ETL_DIM_EMPLOYEES;
 
+SELECT EMPLOYEE_SK FROM DIM_EMPLOYEE;
+
 SELECT * FROM DIM_EMPLOYEE;
 
 
 
+select employee_pk(190) from dual;
+
+select EMPLOYEE_ID, count(*)
+from DIM_EMPLOYEE
+group by EMPLOYEE_ID
+having count(*) > 1;
 
 
 
@@ -969,17 +1060,33 @@ CREATE OR REPLACE FUNCTION EMPLOYEE_PK (PK_EMPLOYEE NUMBER) RETURN NUMBER IS
 V_SK_EMPLOYEE DIM_EMPLOYEE.EMPLOYEE_SK%TYPE;
 
 BEGIN 
-    
-    SELECT EMPLOYEE_SK
-    INTO V_SK_EMPLOYEE
-    FROM DIM_EMPLOYEE
-    WHERE EMPLOYEE_ID = PK_EMPLOYEE;
-
-    RETURN V_SK_EMPLOYEE;
-
+   IF PK_EMPLOYEE IS NOT NULL THEN 
+        SELECT EMPLOYEE_SK
+        INTO V_SK_EMPLOYEE
+        FROM DIM_EMPLOYEE
+        WHERE EMPLOYEE_ID = PK_EMPLOYEE;
+        
+        RETURN V_SK_EMPLOYEE;
+   ELSE
+        RETURN -1;
+  END IF;
+  
 END;
 /
 
+select employee_pk(190) from dual;
+select EMPLOYEE_ID, count(*)
+from DIM_EMPLOYEE
+group by EMPLOYEE_ID
+having count(*) > 1;
+
+select count(*) from dim_employee;
+
+select count(distinct employee_id) from sales;
+
+select count(*) from sales where employee_id is null;
+
+SELECT * FROM DIM_EMPLOYEE;
 ------------------------------------------------- FUNÇÃO PRODUCTS -------------------------------------------------------------
 
 
@@ -1031,51 +1138,53 @@ SELECT * FROM DIM_MARKETING;
 
 ------------------------------------------------- FUNÇÃO DATE -------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION DATE_PK (V_DATE DATE) RETURN NUMBER IS
 
-CREATE OR REPLACE FUNCTION DATE_PK (PK_DATE NUMBER) RETURN NUMBER IS
-
-V_DATE SALES.SALE_DATE%TYPE;
 V_DIM_DATE_ID DIM_DATE.DATE_ID%TYPE;
 
 BEGIN 
-    
-    SELECT SALE_DATE
-    INTO V_DATE
-    FROM SALES
-    WHERE SALE_ID = PK_DATE;
-    
+
+
+
     SELECT DATE_ID
     INTO V_DIM_DATE_ID
     FROM DIM_DATE
-    WHERE DATE_ID = PK_DATE
-        AND DAY_OF_MONTH = TO_NUMBER(TO_CHAR(V_DATE, 'DD'))
+    WHERE 
+        DAY_OF_MONTH = TO_NUMBER(TO_CHAR(V_DATE, 'DD'))
         AND MONTH = TO_NUMBER (TO_CHAR(V_DATE, 'MM'))
         AND YEAR = TO_NUMBER(TO_CHAR(V_DATE,'YYYY'));  
-    
+
 
     RETURN V_DIM_DATE_ID;
 
 END;
+
 /
 
+select  year,month,day_of_month,count(*)
+from dim_date
+group by year,month,day_of_month
+having count(*) > 1;
 
+select count(*)/2 from dim_date;
+select * from dim_date;
 
 ------------------------------------------------- FUNÇÃO TIME -------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION TIME_PK(PK_TIME NUMBER) RETURN NUMBER IS
+CREATE OR REPLACE FUNCTION TIME_PK(PK_TIME VARCHAR2) RETURN NUMBER IS
 
-V_TIME NUMBER := 0; 
+V_TIME DIM_TIME.TIME_ID%TYPE; 
 
 BEGIN
 
-V_TIME := TO_NUMBER(TO_CHAR(PK_TIME, 'HH24'));
+    SELECT TIME_ID
+    INTO V_TIME
+    FROM DIM_TIME
+    WHERE TIME_ID = PK_TIME;
+    
+    RETURN V_TIME;
 
-    IF V_TIME > 0 AND V_TIME < 12 THEN
-        RETURN 1;
-    ELSE
-        RETURN 2;
-        
-    END IF;
+
 END;
 /
 
@@ -1088,18 +1197,19 @@ CREATE OR REPLACE FUNCTION SALARY_PK (PK_SALARY NUMBER) RETURN NUMBER IS
 V_SALARY_SK DIM_EMPLOYEE.MINDIM_SALARY_SALARY_SK%TYPE;
 
 BEGIN 
+    IF PK_SALARY IS NOT NULL THEN 
+        SELECT MINDIM_SALARY_SALARY_SK
+        INTO V_SALARY_SK
+        FROM DIM_EMPLOYEE
+        WHERE EMPLOYEE_ID = PK_SALARY;
+          
+        RETURN V_SALARY_SK;
+    ELSE
+        RETURN -1;
+    END IF;
     
-    SELECT MINDIM_SALARY_SALARY_SK
-    INTO V_SALARY_SK
-    FROM DIM_EMPLOYEE
-    WHERE EMPLOYEE_ID = PK_SALARY;
-      
-
-    RETURN V_SALARY_SK;
-
 END;
 /
-
 
 
 ------------------------------------------------- FUNÇÃO CITIES -------------------------------------------------------------
@@ -1125,9 +1235,82 @@ END;
 /
 
 
+---------------------------------------------------- Sales Factos --------------------------------------------------------------
 
 
+CREATE OR REPLACE PROCEDURE ETL_SALES_FACT IS 
 
 
+CURSOR C_FACT_SALES IS
+    SELECT SUM(QUANTITY_SOLD), SUM(AMOUNT_SOLD), CUST_ID, PROD_ID, EMPLOYEE_ID, MARKETING_ID, TRUNC(SALE_DATE), TIME_ID
+    FROM SALES, SALES_ROWS, DIM_TIME
+    WHERE SALES.SALE_ID = SALES_ROWS.SALE_ID
+    GROUP BY CUST_ID, PROD_ID, EMPLOYEE_ID, MARKETING_ID, TRUNC(SALE_DATE),TIME_ID;
+
+V_QUANTIDADE SALES_ROWS.QUANTITY_SOLD%TYPE;
+V_TOTAL SALES_ROWS.AMOUNT_SOLD%TYPE;
+V_SALE_DATE SALES.SALE_DATE%TYPE;
+V_TIME VARCHAR2(2);
+V_EMPLOYEE SALES.EMPLOYEE_ID%TYPE;
+V_PROD SALES_ROWS.PROD_ID%TYPE;
+V_MARKETING SALES.MARKETING_ID%TYPE;
+V_CUST SALES.CUST_ID%TYPE;
+
+V_CONTA_DADOS NUMBER(6);
+
+BEGIN
+    V_CONTA_DADOS := 0;
+      OPEN C_FACT_SALES;
+        LOOP 
+             
+            FETCH C_FACT_SALES INTO
+                V_QUANTIDADE,
+                V_TOTAL,
+                V_CUST,
+                V_PROD,
+                V_EMPLOYEE,
+                V_MARKETING,
+                V_SALE_DATE,
+                V_TIME;               
+                            
+            EXIT WHEN C_FACT_SALES%NOTFOUND;
+             
+             
+        
+            INSERT INTO FACT_SALES( 
+                                    QUANTITY_SOLD,
+                                    AMOUNT_SOLD,
+                                    DIM_CUSTOMERS_CUST_SK,
+                                    DIM_PRODUCTS_PROD_SK,
+                                    DIM_EMPLOYEE_EMPLOYEE_SK,
+                                    DIM_MARKETING_MARKETING_SK,
+                                    DIM_DATE_DATE_ID,
+                                    DIM_TIME_TIME_ID,                                   
+                                    MINDIM_CITIES_CITY_SK,
+                                    MINDIM_SALARY_SALARY_SK
+                                  
+                                    
+                            ) VALUES (
+                                    V_QUANTIDADE,
+                                    V_TOTAL,
+                                    CUSTOMERS_PK(V_CUST),
+                                    PRODUCTS_PK(V_PROD),
+                                    EMPLOYEE_PK(V_EMPLOYEE),
+                                    MARKETING_PK(V_MARKETING),                              
+                                    DATE_PK(V_SALE_DATE),
+                                    TIME_PK(V_TIME),
+                                    CITIES_PK(V_CUST),
+                                    SALARY_PK(V_EMPLOYEE)
+                                   
+                                  );
+                            V_CONTA_DADOS := V_CONTA_DADOS + 1;
+                            IF MOD(V_CONTA_DADOS,1000) = 0 THEN
+                                COMMIT;
+                            END IF;
+        END LOOP; 
+    CLOSE C_FACT_SALES;
+END;
+/
 
 
+EXEC ETL_SALES_FACT;
